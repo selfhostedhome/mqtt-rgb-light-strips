@@ -89,7 +89,8 @@ typedef enum Effects {
 Effect CurrentEffect;
 
 const char *EffectStrings[] = {
-                               "rainbow", "rainbow_with_glitter", "confetti", "sinelon", "bpm", "juggle", "candycane"};
+    "rainbow",  "rainbow_with_glitter", "confetti", "sinelon", "bpm", "juggle",
+    "candycane"};
 
 void callback(char *topic, byte *payload, unsigned int length) {
 
@@ -157,7 +158,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
         } else if (strcmp(payloadString, "juggle") == 0) {
             CurrentEffect = JUGGLE;
         } else if (strcmp(payloadString, "candycane") == 0) {
-          CurrentEffect = CANDYCANE;
+            CurrentEffect = CANDYCANE;
         }
     }
 }
@@ -201,8 +202,8 @@ void candyCane() {
         CRGB::White, CRGB::White, CRGB::White, CRGB::White, CRGB::White);
 
     startIndex = startIndex + 1;
-    fill_palette(leds, NUM_LEDS, startIndex, 16,
-                 currentPalettestriped, 255, LINEARBLEND);
+    fill_palette(leds, NUM_LEDS, startIndex, 16, currentPalettestriped, 255,
+                 LINEARBLEND);
 }
 
 void rainbow() {
