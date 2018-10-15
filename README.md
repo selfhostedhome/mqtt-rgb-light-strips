@@ -1,6 +1,7 @@
 # MQTT RGB Light Strips
 
-Read the full blog post at [selfhostedhome.com](https://selfhostedhome.com/wifi-connected-rgb-led-strip/).
+A WiFi Connected RGB LED Strip using MQTT. Read the full blog post at
+[selfhostedhome.com](https://selfhostedhome.com/wifi-connected-rgb-led-strip/).
 
 ![Rainbow Lights](images/rgb-rainbow.gif)
 
