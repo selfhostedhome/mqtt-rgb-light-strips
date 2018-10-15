@@ -110,10 +110,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
     if (strcmp(topic, COMMAND_TOPIC) == 0) {
         Serial.println("Processing the command...");
         if (strncmp(payloadString, "on", length) == 0) {
-            Serial.println("Going to turn the LED on");
             TurnOn = true;
         } else {
-            Serial.println("Going to turn the LED off");
             TurnOff = true;
         }
     } else if (strcmp(topic, BRIGHTNESS_COMMAND_TOPIC) == 0) {
@@ -169,6 +167,7 @@ void setup() {
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(SSID, PASSWORD);
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
     Serial.print("Connecting...");
 
     while (WiFi.status() != WL_CONNECTED) {
