@@ -2,12 +2,12 @@
 
 Read the full blog post at [selfhostedhome.com](https://selfhostedhome.com/wifi-connected-rgb-led-strip/).
 
-![Rainbow Lights](images/rainbow.gif)
+![Rainbow Lights](images/rgb-rainbow.gif)
 
 ## Hardware
 
 Please refer to the blog post for more information. Essentially this is using
-[WS2811 LED strips](https://amzn.to/2Cg3rxm).
+[WS2811 LED strips](https://amzn.to/2Cg3rxm) controlled by a [NodeMCU](https://amzn.to/2NI5s7t).
 
 Check out the `schematic/` folder for more information.
 
