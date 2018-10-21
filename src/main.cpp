@@ -2,12 +2,17 @@
 #include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 #include <FastLED.h>
+#include <MSGEQ7.h>
 #include <PubSubClient.h>
 
 #include "config.h"
 
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
+CMSGEQ7<MSGEQ7_SMOOTH, MSGEQ7_PIN_RESET, MSGEQ7_PIN_STROBE, MSGEQ7_PIN_ANALOG>
+    MSGEQ7;
+
+#define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
 void reconnect() {
     // Loop until we're reconnected
@@ -75,6 +80,8 @@ bool UpdateBrightness = false;
 bool UpdateColorFill = false;
 bool UpdateEffect = false;
 
+int MusicEffectCycle = 0;
+
 typedef enum Effects {
     RAINBOW,
     RAINBOW_WITH_GLITTER,
@@ -82,15 +89,20 @@ typedef enum Effects {
     SINELON,
     BPM,
     JUGGLE,
-    CANDYCANE
+    CANDYCANE,
+    MUSIC_RAINBOW,
+    MUSIC_RGB,
+    MUSIC_CYCLE,
 } Effect;
 
 // Globals for LED State Control
 Effect CurrentEffect;
 
-const char *EffectStrings[] = {
-    "rainbow",  "rainbow_with_glitter", "confetti", "sinelon", "bpm", "juggle",
-    "candycane"};
+const char *EffectStrings[] = {"rainbow",   "rainbow_with_glitter",
+                               "confetti",  "sinelon",
+                               "bpm",       "juggle",
+                               "candycane", "music_rainbow",
+                               "music_rgb", "music_cycle"};
 
 void callback(char *topic, byte *payload, unsigned int length) {
 
@@ -157,17 +169,26 @@ void callback(char *topic, byte *payload, unsigned int length) {
             CurrentEffect = JUGGLE;
         } else if (strcmp(payloadString, "candycane") == 0) {
             CurrentEffect = CANDYCANE;
+        } else if (strcmp(payloadString, "music_rainbow") == 0) {
+            CurrentEffect = MUSIC_RAINBOW;
+        } else if (strcmp(payloadString, "music_rgb") == 0) {
+            CurrentEffect = MUSIC_RGB;
+        } else if (strcmp(payloadString, "music_cycle") == 0) {
+            CurrentEffect = MUSIC_CYCLE;
         }
     }
 }
 
 void setup() {
+    // This will set the Audio IC ready for reading
+    MSGEQ7.begin();
+
     Serial.begin(115200);
     Serial.println();
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(SSID, PASSWORD);
-    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+
     Serial.print("Connecting...");
 
     while (WiFi.status() != WL_CONNECTED) {
@@ -188,9 +209,10 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
 
     Brightness = BRIGHTNESS;
-    FastLED.setBrightness(BRIGHTNESS);
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS)
         .setCorrection(TypicalLEDStrip);
+    FastLED.setBrightness(BRIGHTNESS);
+    FastLED.show(); // needed to reset leds to zero
 }
 
 void candyCane() {
@@ -208,6 +230,43 @@ void candyCane() {
 void rainbow() {
     // FastLED's built-in rainbow generator
     fill_rainbow(leds, NUM_LEDS, Hue, 7);
+}
+
+void musicRainbow() {
+    bool newReading = MSGEQ7.read(MSGEQ7_INTERVAL);
+
+    if (newReading) {
+        // Get values for lowest frequencies
+        uint8_t freq0 = MSGEQ7.get(MSGEQ7_0, 0);
+        uint8_t freq1 = MSGEQ7.get(MSGEQ7_1, 0);
+        freq0 = mapNoise(freq0);
+        freq1 = mapNoise(freq0);
+
+        // Use whichever frequency is being used more
+        freq0 = max(freq0, freq1);
+
+        // Map the values so there is always at least 20 brightness
+        freq0 = map(freq0, 0, 255, 20, 255);
+        FastLED.setBrightness(freq0);
+        rainbow();
+    }
+}
+
+void musicRGB() {
+    bool newReading = MSGEQ7.read(MSGEQ7_INTERVAL);
+
+    if (newReading) {
+        uint8_t freq1 = MSGEQ7.get(MSGEQ7_1, 0);
+        uint8_t freq3 = MSGEQ7.get(MSGEQ7_3, 0);
+        uint8_t freq5 = MSGEQ7.get(MSGEQ7_5, 0);
+
+        freq1 = mapNoise(freq1);
+        freq3 = mapNoise(freq3);
+        freq5 = mapNoise(freq5);
+
+        fill_solid(leds, NUM_LEDS, CRGB(freq1, freq3, freq5));
+        fadeToBlackBy(leds, NUM_LEDS, 10);
+    }
 }
 
 void addGlitter(fract8 chanceOfGlitter) {
@@ -257,10 +316,20 @@ void juggle() {
     }
 }
 
-// List of effects. Each is defined as a separate function
 typedef void (*SimpleEffectList[])();
+
+// List of music effects. The 'musicCycle' effect cycles through these
+SimpleEffectList MusicEffectFxns = {
+    musicRainbow,
+    musicRGB,
+};
+
+void musicCycle() { MusicEffectFxns[MusicEffectCycle](); }
+
+// List of effects. Each is defined as a separate function
 SimpleEffectList EffectFxns = {
-    rainbow, rainbowWithGlitter, confetti, sinelon, bpm, juggle, candyCane};
+    rainbow, rainbowWithGlitter, confetti,     sinelon,  bpm,
+    juggle,  candyCane,          musicRainbow, musicRGB, musicCycle};
 
 String rgbString() {
     String rgb;
@@ -328,13 +397,24 @@ void loop() {
     }
 
     // Insert a delay to keep the framerate modest
-    FastLED.delay(1000 / FRAMES_PER_SECOND);
+    delay(1000 / FRAMES_PER_SECOND);
 
     // Slowly cycle the "base color" through the rainbow
     EVERY_N_MILLISECONDS(20) { Hue++; }
 
+    // Every 10 minutes cycle music effects
+    EVERY_N_SECONDS(600) {}
+
     // Heartbeat
     EVERY_N_MILLISECONDS(3000) {
         digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    }
+
+    // Every 10 minutes cycle music effects
+    EVERY_N_SECONDS(600) {
+        MusicEffectCycle++;
+        if (MusicEffectCycle == ARRAY_SIZE(MusicEffectFxns)) {
+            MusicEffectCycle = 0;
+        }
     }
 }

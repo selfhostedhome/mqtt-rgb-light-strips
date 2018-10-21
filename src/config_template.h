@@ -27,7 +27,15 @@
 #define DATA_PIN    5
 #define LED_TYPE    WS2811
 #define COLOR_ORDER BRG
-#define NUM_LEDS    50
+#define NUM_LEDS    70
 
-#define BRIGHTNESS          90
+#define BRIGHTNESS          20
 #define FRAMES_PER_SECOND   60
+
+// Audio Processing Config
+#include <MSGEQ7.h>
+#define MSGEQ7_INTERVAL           ReadsPerSecond(50)
+#define MSGEQ7_SMOOTH             200
+#define MSGEQ7_PIN_ANALOG         A0
+#define MSGEQ7_PIN_RESET          14
+#define MSGEQ7_PIN_STROBE         4
