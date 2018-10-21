@@ -90,19 +90,28 @@ typedef enum Effects {
     BPM,
     JUGGLE,
     CANDYCANE,
+    PARTY_COLORS,
     MUSIC_RAINBOW,
     MUSIC_RGB,
+    MUSIC_PARTY_COLORS,
     MUSIC_CYCLE,
 } Effect;
 
 // Globals for LED State Control
 Effect CurrentEffect;
 
-const char *EffectStrings[] = {"rainbow",   "rainbow_with_glitter",
-                               "confetti",  "sinelon",
-                               "bpm",       "juggle",
-                               "candycane", "music_rainbow",
-                               "music_rgb", "music_cycle"};
+const char *EffectStrings[] = {"rainbow",
+                               "rainbow_with_glitter",
+                               "confetti",
+                               "sinelon",
+                               "bpm",
+                               "juggle",
+                               "candycane",
+                               "party_colors",
+                               "music_rainbow",
+                               "music_rgb",
+                               "music_party_colors",
+                               "music_cycle"};
 
 void callback(char *topic, byte *payload, unsigned int length) {
 
@@ -169,10 +178,14 @@ void callback(char *topic, byte *payload, unsigned int length) {
             CurrentEffect = JUGGLE;
         } else if (strcmp(payloadString, "candycane") == 0) {
             CurrentEffect = CANDYCANE;
+        } else if (strcmp(payloadString, "party_colors") == 0) {
+            CurrentEffect = PARTY_COLORS;
         } else if (strcmp(payloadString, "music_rainbow") == 0) {
             CurrentEffect = MUSIC_RAINBOW;
         } else if (strcmp(payloadString, "music_rgb") == 0) {
             CurrentEffect = MUSIC_RGB;
+        } else if (strcmp(payloadString, "music_party_colors") == 0) {
+            CurrentEffect = MUSIC_PARTY_COLORS;
         } else if (strcmp(payloadString, "music_cycle") == 0) {
             CurrentEffect = MUSIC_CYCLE;
         }
@@ -217,7 +230,7 @@ void setup() {
 
 void candyCane() {
     static uint8_t startIndex = 0;
-    static CRGBPalette16 currentPalettestriped = CRGBPalette16(
+    const CRGBPalette16 currentPalettestriped = CRGBPalette16(
         CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red,
         CRGB::Red, CRGB::Red, CRGB::White, CRGB::White, CRGB::White,
         CRGB::White, CRGB::White, CRGB::White, CRGB::White, CRGB::White);
@@ -227,28 +240,52 @@ void candyCane() {
                  LINEARBLEND);
 }
 
+void partyColors() {
+    static uint8_t startIndex = 0;
+
+    startIndex = startIndex + 1;
+    fill_palette(leds, NUM_LEDS, startIndex, 16, PartyColors_p, 255,
+                 LINEARBLEND);
+}
+
 void rainbow() {
     // FastLED's built-in rainbow generator
     fill_rainbow(leds, NUM_LEDS, Hue, 7);
+}
+
+uint8_t getBassReading() {
+    // Get values for lowest frequencies
+    uint8_t freq0 = MSGEQ7.get(MSGEQ7_0, 0);
+    uint8_t freq1 = MSGEQ7.get(MSGEQ7_1, 0);
+    freq0 = mapNoise(freq0);
+    freq1 = mapNoise(freq0);
+
+    // Use whichever frequency is being used more
+    freq0 = max(freq0, freq1);
+
+    // Map the values so there is always at least 20 brightness
+    freq0 = map(freq0, 0, 255, 20, 255);
+
+    return freq0;
 }
 
 void musicRainbow() {
     bool newReading = MSGEQ7.read(MSGEQ7_INTERVAL);
 
     if (newReading) {
-        // Get values for lowest frequencies
-        uint8_t freq0 = MSGEQ7.get(MSGEQ7_0, 0);
-        uint8_t freq1 = MSGEQ7.get(MSGEQ7_1, 0);
-        freq0 = mapNoise(freq0);
-        freq1 = mapNoise(freq0);
-
-        // Use whichever frequency is being used more
-        freq0 = max(freq0, freq1);
-
-        // Map the values so there is always at least 20 brightness
-        freq0 = map(freq0, 0, 255, 20, 255);
-        FastLED.setBrightness(freq0);
+        uint8_t freq = getBassReading();
+        FastLED.setBrightness(freq);
         rainbow();
+    }
+}
+
+void musicPartyColor() {
+    bool newReading = MSGEQ7.read(MSGEQ7_INTERVAL);
+
+    if (newReading) {
+        uint8_t freq = getBassReading();
+        FastLED.setBrightness(freq);
+        partyColors();
     }
 }
 
@@ -328,8 +365,9 @@ void musicCycle() { MusicEffectFxns[MusicEffectCycle](); }
 
 // List of effects. Each is defined as a separate function
 SimpleEffectList EffectFxns = {
-    rainbow, rainbowWithGlitter, confetti,     sinelon,  bpm,
-    juggle,  candyCane,          musicRainbow, musicRGB, musicCycle};
+    rainbow,         rainbowWithGlitter, confetti,    sinelon,      bpm,
+    juggle,          candyCane,          partyColors, musicRainbow, musicRGB,
+    musicPartyColor, musicCycle};
 
 String rgbString() {
     String rgb;
