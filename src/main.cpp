@@ -91,9 +91,10 @@ typedef enum Effects {
     JUGGLE,
     CANDYCANE,
     PARTY_COLORS,
+    ROTATE_PARTY_COLORS,
     MUSIC_RAINBOW,
     MUSIC_RGB,
-    MUSIC_PARTY_COLORS,
+    MUSIC_ROTATE_PARTY_COLORS,
     MUSIC_CYCLE,
 } Effect;
 
@@ -108,9 +109,10 @@ const char *EffectStrings[] = {"rainbow",
                                "juggle",
                                "candycane",
                                "party_colors",
+                               "rotate_party_colors",
                                "music_rainbow",
                                "music_rgb",
-                               "music_party_colors",
+                               "music_rotate_party_colors",
                                "music_cycle"};
 
 void callback(char *topic, byte *payload, unsigned int length) {
@@ -180,12 +182,14 @@ void callback(char *topic, byte *payload, unsigned int length) {
             CurrentEffect = CANDYCANE;
         } else if (strcmp(payloadString, "party_colors") == 0) {
             CurrentEffect = PARTY_COLORS;
+        } else if (strcmp(payloadString, "rotate_party_colors") == 0) {
+            CurrentEffect = ROTATE_PARTY_COLORS;
         } else if (strcmp(payloadString, "music_rainbow") == 0) {
             CurrentEffect = MUSIC_RAINBOW;
         } else if (strcmp(payloadString, "music_rgb") == 0) {
             CurrentEffect = MUSIC_RGB;
-        } else if (strcmp(payloadString, "music_party_colors") == 0) {
-            CurrentEffect = MUSIC_PARTY_COLORS;
+        } else if (strcmp(payloadString, "music_rotate_party_colors") == 0) {
+            CurrentEffect = MUSIC_ROTATE_PARTY_COLORS;
         } else if (strcmp(payloadString, "music_cycle") == 0) {
             CurrentEffect = MUSIC_CYCLE;
         }
@@ -353,21 +357,56 @@ void juggle() {
     }
 }
 
+void rotatePartyColors() {
+    static uint8_t colorIndex = 0;
+    static uint8_t delay = 0;
+
+    fill_solid(&(leds[0]), NUM_LEDS,
+               ColorFromPalette(PartyColors_p, colorIndex, 200));
+    if (delay == 8) {
+        colorIndex++;
+        delay = 0;
+    } else {
+        delay++;
+    }
+}
+
+void musicRotatePartyColors() {
+
+    bool newReading = MSGEQ7.read(MSGEQ7_INTERVAL);
+
+    if (newReading) {
+        uint8_t freq = getBassReading();
+        rotatePartyColors();
+        FastLED.setBrightness(freq);
+    }
+}
+
 typedef void (*SimpleEffectList[])();
 
 // List of music effects. The 'musicCycle' effect cycles through these
 SimpleEffectList MusicEffectFxns = {
     musicRainbow,
     musicRGB,
+    musicRotatePartyColors,
 };
 
 void musicCycle() { MusicEffectFxns[MusicEffectCycle](); }
 
 // List of effects. Each is defined as a separate function
-SimpleEffectList EffectFxns = {
-    rainbow,         rainbowWithGlitter, confetti,    sinelon,      bpm,
-    juggle,          candyCane,          partyColors, musicRainbow, musicRGB,
-    musicPartyColor, musicCycle};
+SimpleEffectList EffectFxns = {rainbow,
+                               rainbowWithGlitter,
+                               confetti,
+                               sinelon,
+                               bpm,
+                               juggle,
+                               candyCane,
+                               partyColors,
+                               rotatePartyColors,
+                               musicRainbow,
+                               musicRGB,
+                               musicRotatePartyColors,
+                               musicCycle};
 
 String rgbString() {
     String rgb;
