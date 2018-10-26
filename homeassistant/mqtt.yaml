@@ -18,6 +18,12 @@
     - bpm
     - juggle
     - candycane
+    - party_colors
+    - rotate_party_colors
+    - music_rainbow
+    - music_rgb
+    - music_rotate_party_colors
+    - music_cycle
   qos: 0
   payload_on: "on"
   payload_off: "off"
